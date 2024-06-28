@@ -10,9 +10,18 @@ public class ManagerScript : MonoBehaviour
 
     }
 
-    // Update is called once per frame
+    // Update is called once per frame3
     void Update()
     {
-        
+        Time.timeScale = 10;
+
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            Time.timeScale += 1;
+        }
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            Time.timeScale -= 1;
+        }
     }
 }

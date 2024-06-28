@@ -13,18 +13,24 @@ public enum EstadosDaPa
 
 public class PaCarregadeira : MonoBehaviour
 {
+    [Space(10), Header("Toneladas de Minerio")]
     [SerializeField] float capacidade, variacaoCapacidade;
     [SerializeField] float densidade, variacaoDensidade;
     [SerializeField] float enchimento, variacaoEnchimento;
+
+    [Space(10), Header("Tempo de interação com minerio")]
     [SerializeField] float tempoDeColeta, variacaoTempoDeColeta;
     [SerializeField] float tempoDeDescarga, variacaoTempoDeDescarga;
+    
+
+    [Space(10), Header("Tempo de Locomoção")]
     [SerializeField] float distancia, variacaoDistancia;
     [SerializeField] float velocidadeCarregado, variacaoVelocidadeCarregado;
     [SerializeField] float velocidadeVazio, variacaoVelocidadeVazio;
 
     float capacidadeAtual, tempoLocomocaoVazio, tempoLocomocaoCarregado, tempoColetaAtual, tempoDescargaAtual;
 
-    [SerializeField]float quantidadeMinerio;
+    [SerializeField] float quantidadeMinerio;
 
     [SerializeField] float tempoAtual;
 
@@ -63,14 +69,7 @@ public class PaCarregadeira : MonoBehaviour
     {
         Vector3 percorrido;
 
-        if (Input.GetKeyDown(KeyCode.D))
-        {
-            Time.timeScale += 1;
-        }
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            Time.timeScale -= 1;
-        }
+        
 
 
         switch (statesPa)
@@ -85,7 +84,6 @@ public class PaCarregadeira : MonoBehaviour
                 if(tempoAtual < 0)
                 {
                     EncherCacamba();
-                    tempoAtual += tempoLocomocaoCarregado;
                     ChangeState(EstadosDaPa.ANDANDO_CHEIA);
                 }
                 break;
@@ -94,11 +92,13 @@ public class PaCarregadeira : MonoBehaviour
                 percorrido = transform.forward / (tempoLocomocaoCarregado / 20);
                 rb.velocity = percorrido;
 
-                tempoAtual -= Time.deltaTime;
 
-                if (tempoAtual < 0)
+                if (transform.position.x > 10)
                 {
                     tempoAtual += tempoDescargaAtual;
+
+                    transform.position = new Vector3(10, 1, 0);
+
                     ChangeState(EstadosDaPa.DESCARREGANDO);
                     
                 }
@@ -110,19 +110,18 @@ public class PaCarregadeira : MonoBehaviour
                 if (tempoAtual < 0)
                 {
                     EsvaziarCacamba();
-                    tempoAtual += tempoLocomocaoVazio;
                     ChangeState(EstadosDaPa.ANDANDO_VAZIA);
                 }
                 break;
 
             case EstadosDaPa.ANDANDO_VAZIA:
 
-                percorrido = transform.forward * -1 / (tempoLocomocaoCarregado / 20);
+                percorrido = transform.forward * -1 / (tempoLocomocaoVazio / 20);
                 rb.velocity = percorrido;
 
-                tempoAtual -= Time.deltaTime;
-                if (tempoAtual < 0)
+                if (transform.position.x < -10)
                 {
+                    transform.position = new Vector3(-10, 1, 0);
                     ChangeState(EstadosDaPa.PARADA);
                 }
                 break;
