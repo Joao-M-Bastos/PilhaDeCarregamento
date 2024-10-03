@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public enum EstadosDaPa
@@ -17,6 +18,7 @@ public class PaCarregadeira : MonoBehaviour
     [SerializeField] float capacidade, variacaoCapacidade;
     [SerializeField] float densidade, variacaoDensidade;
     [SerializeField] float enchimento, variacaoEnchimento;
+    [SerializeField] float porcentagemDeEnchimentoNecessarioParaTrabalho;
 
     [Space(10), Header("Tempo de interação com minerio")]
     [SerializeField] float tempoDeColeta, variacaoTempoDeColeta;
@@ -37,20 +39,48 @@ public class PaCarregadeira : MonoBehaviour
     Rigidbody rb;
    [SerializeField] EstadosDaPa statesPa = new EstadosDaPa();
 
+    [SerializeField] GameObject body;
+    [SerializeField] TextMeshProUGUI quantityText;
+
+    Pilha pilhaFinal, pilhaTrem;
+
     private void Awake()
     {
+        pilhaTrem = GameObject.FindGameObjectWithTag("PilhaTrem").GetComponent<Pilha>();
+        pilhaFinal = GameObject.FindGameObjectWithTag("PilhaFinal").GetComponent<Pilha>();
         rb = GetComponent<Rigidbody>();
     }
 
     // Start is called before the first frame update
     void Start()
     {
-        
+        float[] values = DataBase.GetInstance().GetPaCarregadoraValues();
+
+        capacidade = values[0];
+        variacaoCapacidade = values[1];
+        enchimento = values[2] / 100;
+        variacaoEnchimento = values[3];
+
+
+        tempoDeColeta = values[4];
+        variacaoTempoDeColeta = values[5];
+        tempoDeDescarga = values[6];
+        variacaoTempoDeDescarga = values[7];
+
+
+        distancia = values[8];
+        variacaoDistancia = values[9];
+        velocidadeCarregado = values[10];
+        variacaoVelocidadeCarregado = values[11];
+        velocidadeVazio = values[12];
+        variacaoVelocidadeVazio = values[13];
+
+        porcentagemDeEnchimentoNecessarioParaTrabalho = values[14];
     }
 
     public void GenerateNewValues()
     {
-        capacidadeAtual = Randomize(capacidade, variacaoCapacidade) * Randomize(densidade, variacaoDensidade) * Randomize(enchimento, variacaoEnchimento);
+        capacidadeAtual = Randomize(capacidade, variacaoCapacidade) * ManagerScript.instance.GetDensity() * Randomize(enchimento, variacaoEnchimento) * ManagerScript.instance.GetMultiplier();
         tempoLocomocaoVazio = Randomize(velocidadeVazio, variacaoVelocidadeVazio) * Randomize(distancia, variacaoDistancia);
         tempoLocomocaoCarregado = Randomize(velocidadeCarregado, variacaoVelocidadeCarregado) * Randomize(distancia, variacaoDistancia);
 
@@ -69,15 +99,16 @@ public class PaCarregadeira : MonoBehaviour
     {
         Vector3 percorrido;
 
-        
-
-
         switch (statesPa)
         {
             case EstadosDaPa.PARADA:
-                GenerateNewValues();
-                tempoAtual = tempoColetaAtual;
-                ChangeState(EstadosDaPa.COLETA);
+                quantityText.text = "PARADA";
+                if (pilhaTrem.PorcentagemDeEnchimento() > porcentagemDeEnchimentoNecessarioParaTrabalho/100)
+                {
+                    GenerateNewValues();
+                    tempoAtual = tempoColetaAtual;
+                    ChangeState(EstadosDaPa.COLETA);
+                }
                 break;
             case EstadosDaPa.COLETA:
                 tempoAtual -= Time.deltaTime;
@@ -85,6 +116,7 @@ public class PaCarregadeira : MonoBehaviour
                 {
                     EncherCacamba();
                     ChangeState(EstadosDaPa.ANDANDO_CHEIA);
+                    body.transform.localScale = new Vector3(20, 20, 20);
                 }
                 break;
             case EstadosDaPa.ANDANDO_CHEIA:
@@ -110,6 +142,7 @@ public class PaCarregadeira : MonoBehaviour
                 if (tempoAtual < 0)
                 {
                     EsvaziarCacamba();
+                    body.transform.localScale = new Vector3(20, -20, 20);
                     ChangeState(EstadosDaPa.ANDANDO_VAZIA);
                 }
                 break;
@@ -122,7 +155,18 @@ public class PaCarregadeira : MonoBehaviour
                 if (transform.position.x < -10)
                 {
                     transform.position = new Vector3(-10, 1, 0);
-                    ChangeState(EstadosDaPa.PARADA);
+
+                    if (pilhaTrem.PorcentagemDeEnchimento() > 0)
+                    {
+                        GenerateNewValues();
+                        tempoAtual = tempoColetaAtual;
+                        ChangeState(EstadosDaPa.COLETA);
+                    }
+                    else
+                    {
+                        ChangeState(EstadosDaPa.PARADA);
+                    }
+                    
                 }
                 break;
 
@@ -131,12 +175,25 @@ public class PaCarregadeira : MonoBehaviour
 
     private void EsvaziarCacamba()
     {
+        pilhaFinal.AddValue(quantidadeMinerio);
         quantidadeMinerio = 0;
+        UpdateText();
     }
 
     private void EncherCacamba()
     {
-        quantidadeMinerio = capacidadeAtual;
+        if(pilhaTrem.ReturnValue() < capacidadeAtual )
+            quantidadeMinerio = pilhaTrem.ReturnValue();
+        else
+            quantidadeMinerio = capacidadeAtual;
+           
+        pilhaTrem.RemoveValue(quantidadeMinerio);
+        UpdateText();
+    }
+
+    public void UpdateText()
+    {
+        quantityText.text = quantidadeMinerio.ToString();
     }
 
     public void ChangeState(EstadosDaPa newState)
